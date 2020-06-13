@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Weather</title>
+        <script
+            src="https://unpkg.com/react@16/umd/react.production.min.js"
+            crossorigin
+        ></script>
+        <script
+            src="https://unpkg.com/react-dom@16/umd/react-dom.production.min.js"
+            crossorigin
+        ></script>
+        <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+        <link rel="stylesheet" href="index.css" />
+    </head>
+    <body>
+        <div id="root"></div>
+        <script type="text/babel">
+            const PROXY = "https://cors-anywhere.herokuapp.com/";
+            const API = "3d8fe13e1075d9f1b93146ceb9559e2a";
+            const CITY_API = "http://api.travelpayouts.com/data/ru/cities.json";
+
+            class App extends React.Component {
+                constructor() {
+                    super();
+                    this.state = {
+                        weatherData: "",
+                        cities: [],
+                        cityName: {
+                            name: "Казань",
+                            lat: 55.60844,
+                            lon: 49.29824,
+                        },
+                        valueOfInput: "",
+                        filterCity: [],
+                        idOfDay: 0,
+                    };
+                    this.addCities = this.addCities.bind(this);
+                    this.getWeather = this.getWeather.bind(this);
+                    this.selectCity = this.selectCity.bind(this);
+                    this.selectWeather = this.selectWeather.bind(this);
+                    this.dateBuilder = this.dateBuilder.bind(this);
+                }
+
+                componentDidMount() {
+                    fetch(PROXY + CITY_API)
+                        .then((json) => json.json())
+                        .then((json) => {
+                            let data = [];
+                            data = json.filter((item) => item.name);
+                            data.sort((a, b) => {
+                                if (a.name > b.name) {
+                                    return 1;
+                                }
+                                if (a.name < b.name) {
+                                    return -1;
+                                }
+                                return 0;
+                            });
+                            this.state.cities = data;
+                        });
+
+                    this.getWeather(
+                        this.state.cityName.lat,
+                        this.state.cityName.lon
+                    );
+                }
+                getWeather = async (lat, lon) => {
+                    const URL = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API}&units=metric&lang=ru`;
+                    await fetch(PROXY + URL)
+                        .then((res) => res.json())
+                        .then((json) => {
+                            let count = 0;
+                            const weather = json.list.filter((item, ind) => {
+                                if (ind == 0) {
+                                    this.state.date_now = new Date(item.dt_txt);
+                                }
+                                if (count <= 2) {
+                                    if (ind == 0 || ind > 3) {
+                                        let date = new Date(item.dt_txt);
+
+                                        if (
+                                            ind == 0 ||
+                                            date.getHours() === 12
+                                        ) {
+                                            count++;
+                                            return item;
+                                        }
+                                    }
+                                }
+                            });
+                            this.setState({
+                                weatherData: weather,
+                            });
+                        });
+                };
+
+                selectWeather(id) {
+                    this.setState({
+                        idOfDay: id,
+                    });
+                }
+                selectCity(id, e) {
+                    const target = e.target;
+                    this.state.cityName = {
+                        name: e.target.textContent,
+                        lat: this.state.filterCity[id].coordinates.lat,
+                        lon: this.state.filterCity[id].coordinates.lon,
+                    };
+
+                    this.state.filterCity = [];
+
+                    this.getWeather(
+                        this.state.cityName.lat,
+                        this.state.cityName.lon
+                    );
+
+                    this.setState({
+                        valueOfInput: "",
+                        idOfDay: 0,
+                    });
+                }
+                dateBuilder = (d) => {
+                    let months = [
+                        "Января",
+                        "Февраля",
+                        "Марта",
+                        "Апреля",
+                        "Мая",
+                        "Июня",
+                        "Июля",
+                        "Августа",
+                        "Сентября",
+                        "Ноября",
+                        "Декабря",
+                    ];
+                    let day = d.getDate();
+                    let month = months[d.getMonth()];
+                    return `${day} ${month}`;
+                };
+                addCities(e) {
+                    this.state.filterCity = [];
+                    if (e.target.value !== "") {
+                        this.state.filterCity = this.state.cities.filter(
+                            (item) => {
+                                const fixItem = item.name.toLowerCase();
+                                return fixItem.startsWith(
+                                    e.target.value.toLowerCase()
+                                );
+                            }
+                        );
+                    }
+                    this.setState({
+                        valueOfInput: e.target.value,
+                    });
+                }
+                render() {
+                    const list = this.state.filterCity.map((item, id) => {
+                        return (
+                            <li
+                                onClick={(e) => this.selectCity(id, e)}
+                                key={id}
+                                className="dropdown">
+                                {item.name}
+                            </li>
+                        );
+                    });
+                    return (
+                        <div>
+                            <div className="search-box">
+                                <input
+                                    type="text"
+                                    onChange={this.addCities}
+                                    value={this.state.valueOfInput}
+                                    className="search-bar"
+                                    placeholder="Search..."
+                                />
+                                <ul className="dropdown-list">{list}</ul>
+                            </div>
+                            <MainWeather
+                                weather={
+                                    this.state.weatherData[this.state.idOfDay]
+                                }
+                                cityName={this.state.cityName.name}
+                                dateBuilder={this.dateBuilder}
+                            />
+                            <SelectWeather
+                                weather={this.state.weatherData}
+                                select_Weather={this.selectWeather}
+                                dateBuilder={this.dateBuilder}
+                                idOfDay={this.state.idOfDay}
+                            />
+                        </div>
+                    );
+                }
+            }
+            function MainWeather(props) {
+                return (
+                    <div>
+                        {props.weather && (
+                            <div>
+                                <div className="location-box">
+                                    <div className="location">
+                                        {props.cityName}
+                                    </div>
+                                    <div className="date">
+                                        {props.dateBuilder(
+                                            new Date(props.weather.dt_txt)
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="weather-box">
+                                    <div className="temp">
+                                        {Math.floor(props.weather.main.temp)} °C
+                                    </div>
+                                    <div className="weather">
+                                        {props.weather.weather[0].description}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+            function SelectWeather(props) {
+                return (
+                    <div>
+                        {props.weather && (
+                            <div className="wrapper-weather">
+                                {props.weather.map((item, id) => (
+                                    <div
+                                        onClick={() => props.select_Weather(id)}
+                                        key={id}
+                                        className={
+                                            "content" +
+                                            (props.idOfDay == id
+                                                ? " active"
+                                                : "")
+                                        }>
+                                        <img
+                                            src={`https://openweathermap.org/img/wn/${item.weather[0].icon}@2x.png`}
+                                            alt=""
+                                        />
+                                        <p>
+                                            {props.dateBuilder(
+                                                new Date(item.dt_txt)
+                                            )}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+
+            ReactDOM.render(<App />, document.getElementById("root"));
+        </script>
+    </body>
+</html>
