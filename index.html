@@ -45,7 +45,7 @@
                 }
 
                 componentDidMount() {
-                    fetch(CITY_API)
+                    fetch(PROXY + CITY_API)
                         .then((json) => json.json())
                         .then((json) => {
                             let data = [];
