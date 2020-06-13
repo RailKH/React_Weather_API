@@ -45,7 +45,7 @@
                 }
 
                 componentDidMount() {
-                    fetch(PROXY + CITY_API)
+                    fetch(CITY_API)
                         .then((json) => json.json())
                         .then((json) => {
                             let data = [];
@@ -69,7 +69,7 @@
                 }
                 getWeather = async (lat, lon) => {
                     const URL = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API}&units=metric&lang=ru`;
-                    await fetch(PROXY + URL)
+                    await fetch(URL)
                         .then((res) => res.json())
                         .then((json) => {
                             let count = 0;
